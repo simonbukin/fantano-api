@@ -29,6 +29,40 @@ def create_table(db, create_sql):
         print('SQLite3 Database Creation Exception: {}'.format(e))
 
 
+def get_all_artist_ratings(db, artist):
+    c = db.cursor()
+    query = '''
+        SELECT videoid, artist, album, rating FROM fantano WHERE artist=?
+    '''
+    c.execute(query, artist)
+    reviews = []
+    for review in c.fetchall():
+        reviews.append({
+            'video_id': review[0],
+            'artist': review[1],
+            'album': review[2],
+            'rating': review[3]
+        })
+    return reviews
+
+
+def get_all_albums_by_rating(db, rating):
+    c = db.cursor()
+    query = '''
+        SELECT videoid, artist, album, rating FROM fantano WHERE rating=?
+    '''
+    c.execute(query, rating)
+    reviews = []
+    for review in c.fetchall():
+        reviews.append({
+            'video_id': review[0],
+            'artist': review[1],
+            'album': review[2],
+            'rating': review[3]
+        })
+    return reviews
+
+
 def insert_row(db, row):
     c = db.cursor()
     add = '''
