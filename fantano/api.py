@@ -6,9 +6,16 @@ from fantano import (open_db_connection,
                      get_all_albums_by_rating,
                      get_album_reviews)
 
-# Define app and api around app
-app = Flask(__name__)
-api = Api(app)
+
+def create_app():
+    app = Flask(__name__)
+    api = Api(app)
+
+    api.add_resource(GetReviewsByArtist, '/artists/<artist>')
+    api.add_resource(GetReviewsByRating, '/ratings/<rating>')
+    api.add_resource(GetAlbumReview, '/albums/<album>')
+
+    return app
 
 
 class GetReviewsByArtist(Resource):
@@ -53,11 +60,7 @@ class GetAlbumReview(Resource):
             return {'error': e}
 
 
-# Add resources to the api
-api.add_resource(GetReviewsByArtist, '/artists/<artist>')
-api.add_resource(GetReviewsByRating, '/ratings/<rating>')
-api.add_resource(GetAlbumReview, '/albums/<album>')
-
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app = create_app()
+    app.run(host='0.0.0.0', port=5000, debug=True)

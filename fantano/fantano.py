@@ -84,6 +84,7 @@ def get_album_reviews(db, album):
 
 
 def insert_row(db, row):
+    """Insert a row into a given db."""
     c = db.cursor()
     add = '''
         INSERT INTO fantano (videoid, rating, artist, album, description)
