@@ -1,13 +1,20 @@
+"""
+fantano/api.py
+Setups up the actual API with Flask/Flask-Restful.
+"""
+
 from flask import Flask
 from flask_restful import Resource, Api
 
-from fantano import (open_db_connection,
-                     get_all_artist_reviews,
-                     get_all_albums_by_rating,
-                     get_album_reviews)
+from query import (get_all_artist_reviews,
+                   get_all_albums_by_rating,
+                   get_album_reviews)
+
+from db import open_db_connection
 
 
 def create_app():
+    """Creates and returns a Flask app, complete with resource endpoints."""
     app = Flask(__name__)
     api = Api(app)
 

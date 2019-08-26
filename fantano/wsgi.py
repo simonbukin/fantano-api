@@ -1,3 +1,8 @@
+"""
+fantano/wsgi.py
+Creates an entry point for gunicorn.
+"""
+
 from api import create_app
 
 app = create_app()

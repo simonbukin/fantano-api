@@ -1,8 +1,5 @@
 """Get Fantano's music reviews with the YouTube API."""
-import json
 import re
-import sqlite3
-import time
 
 import requests
 
@@ -11,103 +8,8 @@ from auth import yt_key
 yt_base_url = 'https://www.googleapis.com/youtube/v3/'
 
 
-def open_db_connection(db_name):
-    """Open a SQLite3 database connection and return it."""
-    try:
-        c = sqlite3.connect(db_name)
-        return c
-    except Exception as e:
-        print('SQLite3 Database Connection Exception: {}'.format(e))
-
-
-def create_table(db, create_sql):
-    """Create a table with the given types and names."""
-    try:
-        cursor = db.cursor()
-        cursor.execute(create_sql)
-    except Exception as e:
-        print('SQLite3 Database Creation Exception: {}'.format(e))
-
-
-def get_all_artist_reviews(db, artist):
-    """Get all artist reviews given an artist name."""
-    c = db.cursor()
-    query = '''
-        SELECT videoid, artist, album, rating FROM fantano WHERE artist=?
-    '''
-    c.execute(query, artist)
-    reviews = []
-    for review in c.fetchall():
-        reviews.append({
-            'video_id': review[0],
-            'artist': review[1],
-            'album': review[2],
-            'rating': review[3]
-        })
-    return reviews
-
-
-def get_all_albums_by_rating(db, rating):
-    """Get all albums that have a specific rating."""
-    c = db.cursor()
-    query = '''
-        SELECT videoid, artist, album, rating FROM fantano WHERE rating=?
-    '''
-    c.execute(query, rating)
-    reviews = []
-    for review in c.fetchall():
-        reviews.append({
-            'video_id': review[0],
-            'artist': review[1],
-            'album': review[2],
-            'rating': review[3]
-        })
-    return reviews
-
-
-def get_album_reviews(db, album):
-    """Get all albums that match an album name."""
-    c = db.cursor()
-    query = '''
-        SELECT videoid, artist, album, rating FROM fantano WHERE album=?
-    '''
-    c.execute(query, album)
-    reviews = []
-    for review in c.fetchall():
-        reviews.append({
-            'video_id': review[0],
-            'artist': review[1],
-            'album': review[2],
-            'rating': review[3]
-        })
-    return reviews
-
-
-def insert_row(db, row):
-    """Insert a row into a given db."""
-    c = db.cursor()
-    add = '''
-        INSERT INTO fantano (videoid, rating, artist, album, description)
-        VALUES (?, ?, ?, ?, ?)
-    '''
-    c.execute(add, row)
-
-
-"""Generic Open/Close JSON helper functions."""
-
-
-def load_json(filename):
-    with open(filename, 'r') as fp:
-        return json.load(fp)
-
-
-def dump_json(filename, obj):
-    with open(filename, 'w') as fp:
-        json.dump(obj, fp, indent=2)
-
-
 def get_all_yt_videos():
-    """Generates a JSON dump of all videos a channel contains."""
+    """Generates a dump of all videos a channel contains."""
     next_page = None
     while True:
         vid_json = get_yt_videos(next_page=next_page)
@@ -143,9 +45,18 @@ def filter_snippets(json_dict):
     return [item['snippet'] for item in json_dict]
 
 
-def filter_album_reviews(json_dict):
-    """Filter just ALBUM REVIEWs from all given videos."""
-    return [video for video in json_dict if 'ALBUM REVIEW' in video['title']]
+def filter_reviews(json_dict):
+    """Filter just EP/ALBUM reviews and NOT GOODs from all given videos."""
+    filtered = []
+    for video in json_dict:
+        title = video['title'].lower()
+        if 'review' in title or 'not good' in title:
+            if ' ep ' in title:
+                video['type'] = 'ep'
+            else:
+                video['type'] = 'album'
+            filtered.append(video)
+    return filtered
 
 
 def update_rating(json_dict):
@@ -183,51 +94,8 @@ def update_artist_album(json_dict):
 def update_batch(videos_json):
     """Update a batch of videos."""
     # Just snippets and only album reviews
-    videos = filter_album_reviews(filter_snippets(videos_json))
+    videos = filter_reviews(filter_snippets(videos_json))
     for video in videos:
         # only yield if both tests pass
         if update_rating(video) and update_artist_album(video):
             yield video
-
-
-def create_fantano_db():
-    """Create the Fantano review database."""
-    db = open_db_connection('fantano.db')
-    table_sql = '''
-        CREATE TABLE IF NOT EXISTS fantano (
-            id integer PRIMARY KEY,
-            videoid TEXT,
-            rating INTEGER,
-            artist TEXT,
-            album TEXT,
-            description TEXT
-        );
-    '''
-    create_table(db, table_sql)
-    return db
-
-
-def populate_fantano_db(db):
-    """Fill Fantano DB with rating information."""
-    for videos in get_all_yt_videos():
-        batch = update_batch(videos)
-        for video in batch:
-            insert_row(db, (video['resourceId']['videoId'],
-                            video['rating'],
-                            video['artist'],
-                            video['album'],
-                            video['description']))
-            print('{} - {} - {} - {}'.format(video['resourceId']['videoId'],
-                                             video['rating'],
-                                             video['artist'],
-                                             video['album'],
-                                             ))
-
-
-def create_and_populate():
-    """Initialize and fill the Fantano DB and time it."""
-    start = time.time()
-    db = create_fantano_db()
-    populate_fantano_db(db)
-    db.commit()
-    print('Took: {}s'.format(time.time() - start))

@@ -7,6 +7,12 @@ An API for accessing Anthony Fantano's music reviews.
 
 This project is hosted on AWS using Elastic Beanstalk in a Docker container. Uptime is currently non-existent given that it is not fully finished, but once there is a working version that I can host, an endpoint will be provided.
 
+### TODO
+
+-   Improve the YT parser -> get EP reviews and NOT GOOD ratings.
+-   Update ReadTheDocs
+-   Diagram API endpoints
+
 ### Sample Usage:
 
 Getting every review that recieved a perfect 10:
