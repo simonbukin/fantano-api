@@ -55,37 +55,51 @@ def filter_reviews(json_dict):
                 video['type'] = 'ep'
             else:
                 video['type'] = 'album'
+            if 'not good' in title:
+                video['rating'] = -1  # not good rating
             filtered.append(video)
     return filtered
 
 
 def update_rating(json_dict):
     """Update JSON dict with Fantano's rating."""
-    rating_re = re.compile(r'\n*(\d+\/\d+)\n*')
-    desc = json_dict['description']
-    re_matches = rating_re.findall(desc)
-    if re_matches:  # for all matches
-        # length has to be less than 5 to match format of review
-        # e.g. 10/10 -> 5 characters
-        num_ratings = [match for match in re_matches if len(match) <= 5]
-        for rating in num_ratings:
-            rating_split = rating.split('/')
-            if rating_split[-1] == '10':  # out of 10
-                json_dict['rating'] = int(rating_split[0])
-                return True
-                break
-    return False
+    if not(json_dict.get('rating')):
+        rating_re = re.compile(r'\n*(\d+\/\d+)\n*')
+        desc = json_dict['description']
+        re_matches = rating_re.findall(desc)
+        if re_matches:  # for all matches
+            # length has to be less than 5 to match format of review
+            # e.g. 10/10 -> 5 characters
+            num_ratings = [match for match in re_matches if len(match) <= 5]
+            for rating in num_ratings:
+                rating_split = rating.split('/')
+                if rating_split[-1] == '10':  # out of 10
+                    json_dict['rating'] = int(rating_split[0])
+                    return True
+                    break
+        return False
+    else:
+        return True
 
 
 def update_artist_album(json_dict):
     """Update a JSON file by parsing albums and artists."""
-    bad_words = ['album', 'review']
+    bad_words = ['ep', 'album', 'review']
     try:
         title = json_dict['title']
         title = [t for t in title.split() if t.lower() not in bad_words]
         title = ' '.join(title)
-        artist, album, *rest = title.split('- ')
-        json_dict['artist'], json_dict['album'] = artist.strip(), album.strip()
+        # print('update artist dict')
+        if json_dict.get('rating') == -1:
+            artist_album, *rest = title.split(':')
+            artist, album, *rest = artist_album.split('\'s')
+            print('NOT GOOD: {} by {}'.format(album, artist))
+            json_dict['artist'], json_dict['album'] = artist.strip(), album.strip()
+        else:
+            # print(title)
+            artist, album, *rest = title.split('- ')
+            json_dict['artist'], json_dict['album'] = artist.strip(), album.strip()
+        # print(json_dict['album'], json_dict['artist'])
         return True
     except ValueError:
         return False
@@ -94,8 +108,14 @@ def update_artist_album(json_dict):
 def update_batch(videos_json):
     """Update a batch of videos."""
     # Just snippets and only album reviews
-    videos = filter_reviews(filter_snippets(videos_json))
+    snippets = filter_snippets(videos_json)
+    videos = filter_reviews(snippets)
     for video in videos:
         # only yield if both tests pass
+        # if video.get('rating') == -1:
+        #     print(video['title'])
         if update_rating(video) and update_artist_album(video):
             yield video
+        else:
+            pass
+            # print(video['title'])
